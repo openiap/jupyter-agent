@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+      "noImplicitAny": false,
+      "skipLibCheck": true,
+      "sourceMap": true,
+      "outDir": "./dist",
+  }
+}
+// {
+//     "compilerOptions": {
+//       "experimentalDecorators": true,
+//       "noImplicitAny": false,
+//       "emitDecoratorMetadata": true,
+//       "declaration": true,
+//       "strictPropertyInitialization": false,
+//       "target": "esnext",
+//       "module": "esnext",
+//       "strict": true,
+//       "jsx": "preserve",
+//       "moduleResolution": "node",
+//       "allowJs": true,
+//       "skipLibCheck": true,
+//       "esModuleInterop": true,
+//       "allowSyntheticDefaultImports": true,
+//       "forceConsistentCasingInFileNames": true,
+//       "useDefineForClassFields": true,
+//       "sourceMap": true,
+//       "baseUrl": ".",
+//       "outDir": "./dist",
+//       "types": [
+//       ],
+//       "paths": {
+//         "@/*": [
+//           "src/*"
+//         ]
+//       },
+//       "lib": [
+//         "esnext",
+//         "dom",
+//         "dom.iterable",
+//         "scripthost"
+//       ]
+//     },
+//     "include": [
+//       "src/**/*.ts"
+//     ],
+//     "exclude": [
+//       "node_modules"
+//     ]
+//   }
+  

@@ -1,0 +1,7 @@
+/node_modules
+dist
+user
+users
+files
+/models
+package-lock.json

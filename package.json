@@ -1,0 +1,26 @@
+{
+    "name": "jupyter-agent",
+    "version": "0.0.42",
+    "description": "jupyter agent",
+    "main": "dist/main.js",
+    "openiap": {
+        "daemon": true,
+        "chromium": false,
+        "language": "nodejs",
+        "typescript": false
+    },
+    "scripts": {
+        "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
+    },
+    "dependencies": {
+        "@jupyterlab/services": "^7.0.12",
+        "@openiap/nodeapi": "^0.0.37",
+        "chokidar": "^3.6.0",
+        "cross-spawn": "^7.0.3",
+        "express": "^4.18.2",
+        "http-proxy-middleware": "^2.0.6",
+        "isomorphic-git": "^1.25.6",
+        "js-yaml": "^4.1.0",
+        "typescript": "^5.3.3"
+    }
+}
