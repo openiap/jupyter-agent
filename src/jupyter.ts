@@ -48,8 +48,16 @@ export async function FindFreePort(preferred: number): Promise<number> {
   });
 }
 export class JupyterInstance {
-  constructor(private app: any, public path: string, public port: number = 0, public token: string = "") {
+  constructor(private server: any, private app: any, public path: string, public port: number = 0, public token: string = "") {
     console.log('JupyterInstance created');
+    process.on('SIGINT', async function () {
+      console.log("Caught interrupt signal");
+      try {
+        await this.dispose();
+        setTimeout(() => { process.exit(); }, 2000);
+      } catch (error) {
+      }
+    });
   }
   running: boolean = false;
   autorestart: boolean = true;
@@ -65,7 +73,6 @@ export class JupyterInstance {
     try {
       const matrix = await git.statusMatrix({ fs, dir })
       const unstagedFilePaths = matrix.filter((row) => row[2] !== row[3]).map((row) => row[0]);
-      console.log("changed:", this.changed)
       if (unstagedFilePaths.length > 0) {
         const notdeleted = matrix.filter((row) => row[2] !== row[3] && row[2] > 0).map((row) => row[0]);
         const deleted = matrix.filter((row) => row[2] !== row[3] && row[2] == 0).map((row) => row[0]);
@@ -74,8 +81,6 @@ export class JupyterInstance {
         await Promise.all(deleted.map((filepath) => git.remove({ fs, dir, filepath })));
         await git.commit({ fs, dir, author, message: `Auto commit ${unstagedFilePaths.length} changes.` });
         await git.push({ fs, http, dir, url, headers });
-      } else {
-        // console.log("No changes detected.");
       }
       await git.pull({ fs, http, dir, url, author, headers });
       this.changed = false;
@@ -104,8 +109,8 @@ export class JupyterInstance {
     const info = await git.getRemoteInfo({ http, url, headers });
     if (info.refs == null) {
       await git.init({ fs, dir });
-      await git.branch({ fs, dir, ref: 'main' });
-      await git.addRemote({ fs, dir, remote: 'origin', url });
+      await git.branch({ fs, dir, ref: 'main', force: true });
+      await git.addRemote({ fs, dir, remote: 'origin', url, force: true});
       fs.writeFileSync(path.join(dir, "README.md"), `# ${name}\n\nThis is a git repository for ${name}.\n`, { flag: 'a' });
     } else {
       if (fs.existsSync(dir)) {
@@ -117,7 +122,7 @@ export class JupyterInstance {
         }
       }
       if (!fs.existsSync(dir)) {
-        console.log(await git.clone({ fs, http, dir, url, headers }));
+        await git.clone({ fs, http, dir, url, headers });
       }
     }
     this.CheckForUpdates(login, name);
@@ -304,6 +309,7 @@ dependencies:
     }
   }
   public async condainstall(condapath: string): Promise<string> {
+    await this.CreateTempEnvoriment();
     var envname = null;
     // create environment and install packages
     var envfile = ""
@@ -399,6 +405,8 @@ dependencies:
     return result;
   }
   jupyterprocess: ChildProcessWithoutNullStreams
+  proxy: any;
+  wsupgrader: any;
   async LaunchJupyterProcess() {
     if (this.port == null || (this.port as any) == "" || this.port < 10) {
       this.port = await FindFreePort(0);
@@ -426,10 +434,10 @@ dependencies:
     this.jupyterprocess = await this.RunPythonProcessAsync(params)
     this.running = true;
     this.jupyterprocess.stdout.on('data', (data) => {
-      console.log(`stdout: ${data}`);
+      console.log(`${data}`);
     });
     this.jupyterprocess.stderr.on('data', (data) => {
-      console.error(`stderr: ${data}`);
+      console.log(`${data}`);
     });
     const onClose = (code) => {
       this.running = false;
@@ -445,15 +453,30 @@ dependencies:
       }
     }
     this.jupyterprocess.on('close', onClose.bind(this));
-    this.app.use('/user/' + this.path + '*',
-      createProxyMiddleware({
+    if(this.proxy == null) {
+      this.proxy = createProxyMiddleware({
         target: 'http://127.0.0.1:' + this.port + '/',
         changeOrigin: true,
-        ws: true,
-      }),
-    );
+        ws: false,
+      });
+    }
+    if(this.wsupgrader == null) {
+      const upgrade = (req, socket, head) => {
+        if (req.url.indexOf('/user/' + this.path) === 0) {
+          console.log('proxy upgrade', req.url, '/user/' + this.path)
+          this.proxy.upgrade(req, socket, head);
+        } else {
+          // console.log('ignoring', req.url, '/user/' + this.path)
+        }
+      }
+      this.wsupgrader = upgrade.bind(this);
+    }
+    var exists = this.app._router?.stack?.find((layer) => layer.handle === this.proxy);
+    if(exists == null) {
+      this.app.use('/user/' + this.path + '*', this.proxy);
+      this.server.on('upgrade', this.wsupgrader);
+    }
     return '/user/' + this.path + '/lab/?token=' + this.token;
-    // return 'http://localhost:' + this.port + '/' + path + '/lab/?token=' + this.token;
   }
   public async CreateKernel(host: string, port: number, token: string, path: string, kernel: string): Promise<Kernel.IKernelConnection> {
     try {

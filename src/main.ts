@@ -127,14 +127,16 @@ async function executeAllCell(sessionManager: SessionManager) {
 }
 
 
-let j: JupyterInstance
 
 async function main() {
   let port = await FindFreePort(3000);
   const client = new openiap();
   const express = require('express');
+  const http = require('http');
+
   const app = express();
-  app.listen(port);
+  const server = http.createServer(app);
+  server.listen(port);
   console.log("Listening on http://localhost:" + port);
 
 
@@ -144,14 +146,21 @@ async function main() {
 
   const reponame = "allan";
 
-
-  j = new JupyterInstance(app, reponame, port + 1);
+  let j: JupyterInstance = new JupyterInstance(server, app, reponame, port + 1);
+  var j2 = new JupyterInstance(server, app, "rutger", port + 2);
   try {
     await j.prepareAndClone(login, reponame);
     await j.StopAllServers();
     const url1 = await j.LaunchJupyterProcess();
     console.log("***************************************")
-    console.log('http://localhost:' + port + url1);
+    console.log('http://localhost:' + j.port + url1);
+    console.log("***************************************")
+
+    // await new Promise(res => setTimeout(res, 2000));
+    await j2.prepareAndClone(login, "rutger");
+    const url2 = await j2.LaunchJupyterProcess();
+    console.log("***************************************")
+    console.log('http://localhost:' + j2.port + url2);
     console.log("***************************************")
   } catch (error) {
     console.error(error.message);
@@ -207,6 +216,6 @@ main();
 
 process.on('SIGINT', async function () {
   console.log("Caught interrupt signal");
-  await j.dispose();
+  // await j.dispose();
   process.exit();
 });
